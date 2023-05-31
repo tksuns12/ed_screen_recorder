@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:developer';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -51,7 +52,6 @@ class EdScreenRecorder {
       Event Name: ${formatResponse.eventName}  
       Progressing: ${formatResponse.isProgress} 
       Message: ${formatResponse.message} 
-      Success: ${formatResponse.success} 
       Video Hash: ${formatResponse.videoHash} 
       Start Date: ${formatResponse.startDate} 
       End Date: ${formatResponse.endDate}
@@ -70,6 +70,7 @@ class EdScreenRecorder {
     var response = await _channel.invokeMethod('stopRecordScreen', {
       "enddate": dateNow,
     });
+    log(response);
 
     var formatResponse = RecordOutput.fromJson(json.decode(response));
     if (kDebugMode) {
@@ -79,7 +80,6 @@ class EdScreenRecorder {
       Event Name: ${formatResponse.eventName}  
       Progressing: ${formatResponse.isProgress} 
       Message: ${formatResponse.message} 
-      Success: ${formatResponse.success} 
       Video Hash: ${formatResponse.videoHash} 
       Start Date: ${formatResponse.startDate} 
       End Date: ${formatResponse.endDate}

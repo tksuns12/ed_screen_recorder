@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:video_player/video_player.dart';
 
 void main() {
   runApp(const MyApp());
@@ -41,6 +42,8 @@ class _HomePageState extends State<HomePage> {
   EdScreenRecorder? screenRecorder;
   Map<String, dynamic>? _response;
   bool inProgress = false;
+  bool isRecorded = false;
+  VideoPlayerController? _controller;
 
   @override
   void initState() {
@@ -49,15 +52,19 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> startRecord({required String fileName}) async {
-    Directory? tempDir = await getTemporaryDirectory();
-    String? tempPath = tempDir.path;
+    final path =
+        '${(await getTemporaryDirectory()).path}/math_tutor_temp';
+    final savingDirectory = Directory(path);
+    if (!await savingDirectory.exists()) {
+      await savingDirectory.create(recursive: true);
+    }
     try {
       var startResponse = await screenRecorder?.startRecordScreen(
-        fileName: "Eren",
+        fileName: "temp",
         //Optional. It will save the video there when you give the file path with whatever you want.
         //If you leave it blank, the Android operating system will save it to the gallery.
-        dirPathToSave: tempPath,
-        audioEnable: false,
+        dirPathToSave: path,
+        audioEnable: true,
       );
       setState(() {
         _response = startResponse;
@@ -83,8 +90,13 @@ class _HomePageState extends State<HomePage> {
   Future<void> stopRecord() async {
     try {
       var stopResponse = await screenRecorder?.stopRecord();
+
       setState(() {
         _response = stopResponse;
+        isRecorded = true;
+        _controller = VideoPlayerController.file(
+          stopResponse?['file'],
+        );
       });
     } on PlatformException {
       kDebugMode
@@ -143,6 +155,24 @@ class _HomePageState extends State<HomePage> {
             ElevatedButton(
                 onPressed: () => stopRecord(),
                 child: const Text('STOP RECORD')),
+            if (isRecorded && _controller != null) ...[
+              Expanded(
+                child: VideoPlayer(_controller!),
+              ),
+              // Play Button
+              FloatingActionButton(
+                onPressed: () {
+                  setState(() {
+                    _controller!.value.isPlaying
+                        ? _controller!.pause()
+                        : _controller!.play();
+                  });
+                },
+                child: Icon(
+                  _controller!.value.isPlaying ? Icons.pause : Icons.play_arrow,
+                ),
+              ),
+            ]
           ],
         ),
       ),

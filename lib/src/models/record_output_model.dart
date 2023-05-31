@@ -8,7 +8,6 @@ String recordOutputToJson(RecordOutput data) => json.encode(data.toJson());
 
 class RecordOutput {
   RecordOutput({
-    required this.success,
     required this.file,
     required this.isProgress,
     required this.eventName,
@@ -18,7 +17,6 @@ class RecordOutput {
     required this.endDate,
   });
 
-  bool success;
   File file;
   bool isProgress;
   String eventName;
@@ -29,7 +27,6 @@ class RecordOutput {
 
   factory RecordOutput.fromJson(Map<String, dynamic> json) {
     return RecordOutput(
-      success: json["success"],
       file: File(json["file"]),
       isProgress: json["isProgress"],
       eventName: json["eventname"],
@@ -41,7 +38,6 @@ class RecordOutput {
   }
 
   Map<String, dynamic> toJson() => {
-        "success": success,
         "file": file,
         "progressing": isProgress,
         "eventname": eventName,

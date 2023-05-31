@@ -5,7 +5,6 @@ import Photos
 
 
   struct JsonObj : Codable {
-    var success: Bool!
     var file: String
     var isProgress: Bool!
     var eventname: String!
@@ -34,7 +33,6 @@ public class SwiftEdScreenRecorderPlugin: NSObject, FlutterPlugin {
   var videoBitrate: Int?;
   var fileOutputFormat: String? = "";
   var fileExtension: String? = "";
-  var success: Bool! = false;
   var videoHash: String! = "";
   var startDate: Int?;
   var endDate: Int?;
@@ -44,6 +42,8 @@ public class SwiftEdScreenRecorderPlugin: NSObject, FlutterPlugin {
 
 
   var myResult: FlutterResult?
+    var startRecordingResult: FlutterResult?
+    var stopRecordingResult: FlutterResult?
 
   public static func register(with registrar: FlutterPluginRegistrar) {
     let channel = FlutterMethodChannel(name: "ed_screen_recorder", binaryMessenger: registrar.messenger())
@@ -52,8 +52,9 @@ public class SwiftEdScreenRecorderPlugin: NSObject, FlutterPlugin {
   }
 
   public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
-      
+      myResult = result
     if(call.method == "startRecordScreen"){
+        startRecordingResult = result
         let args = call.arguments as? Dictionary<String, Any>
         self.isAudioEnabled=((args?["audioenable"] as? Bool?)! ?? false)!
         self.fileName=(args?["filename"] as? String)!+".mp4"
@@ -91,11 +92,9 @@ public class SwiftEdScreenRecorderPlugin: NSObject, FlutterPlugin {
                 height = Int32(height as! Int32);
             }
         }
-        self.success=Bool(startRecording(width: width as! Int32 ,height: height as! Int32));
+        startRecording(width: width as! Int32 ,height: height as! Int32);
         self.startDate=Int(NSDate().timeIntervalSince1970 * 1_000)
-        myResult = result
         let jsonObject: JsonObj = JsonObj(
-          success: Bool(self.success),
           file: String("\(self.filePath)/\(self.fileName)"),
           isProgress: Bool(self.isProgress),
           eventname: String(self.eventName ?? "eventName"),
@@ -109,31 +108,19 @@ public class SwiftEdScreenRecorderPlugin: NSObject, FlutterPlugin {
         let jsonStr = String(data:json,encoding: .utf8)
         result(jsonStr)
     }else if(call.method == "stopRecordScreen"){
+        stopRecordingResult = result
         
-        if(videoWriter != nil){
-            self.success=Bool(stopRecording())
+        if(videoWriter != nil){stopRecording()
             self.isProgress=Bool(false)
             self.eventName=String("stopRecordScreen")
             self.endDate=Int(NSDate().timeIntervalSince1970 * 1_000)
         }else{
-            self.success=Bool(false)
+            stopRecordingResult?(FlutterError(code:
+                "There is no Video Writer!", message: nil, details: nil))
+            stopRecordingResult = nil
         }
-        myResult = result
-
-          let jsonObject: JsonObj = JsonObj(
-            success: Bool(self.success),
-            file: String("\(self.filePath)/\(self.fileName)"),
-            isProgress: Bool(self.isProgress),
-            eventname: String(self.eventName ?? "eventName"),
-            message: String(self.message!),
-            videohash: String(self.videoHash),
-            startdate: Int(self.startDate ?? Int(NSDate().timeIntervalSince1970 * 1_000)),
-            enddate: Int(self.endDate ?? 0)
-          )
-          let encoder = JSONEncoder()
-          let json = try! encoder.encode(jsonObject)
-          let jsonStr = String(data:json,encoding: .utf8)
-          result(jsonStr)
+        
+        
     } else if (call.method == "pauseRecordingScreen") {
         result(true)
     }
@@ -147,8 +134,7 @@ public class SwiftEdScreenRecorderPlugin: NSObject, FlutterPlugin {
     return String((0..<length).map{ _ in letters.randomElement()! })
   }
 
-    @objc func startRecording(width: Int32, height: Int32) -> Bool {
-     var res : Bool = true
+    @objc func startRecording(width: Int32, height: Int32) -> Void {
     if(recorder.isAvailable){
         NSLog("startRecording: w x h = \(width) x \(height) pixels");
         if self.dirPathToSave != "" {
@@ -164,7 +150,8 @@ public class SwiftEdScreenRecorderPlugin: NSObject, FlutterPlugin {
             try FileManager.default.removeItem(at: videoOutputURL!)}
         } catch let error as NSError{
             print("Error", error);
-            res = Bool(false);
+            startRecordingResult?(FlutterError(code: String(error.code), message: error.localizedDescription, details: error.description))
+            startRecordingResult = nil
         }
 
         do {
@@ -174,7 +161,8 @@ public class SwiftEdScreenRecorderPlugin: NSObject, FlutterPlugin {
             print("Error opening video file", writerError);
             self.message=String(writerError as! Substring) as String
             videoWriter = nil;
-            return  Bool(false)
+            startRecordingResult?(FlutterError(code: String(writerError.code), message: writerError.localizedDescription, details:writerError.description))
+            startRecordingResult = nil
         }
         if #available(iOS 11.0, *) {
             recorder.isMicrophoneEnabled = isAudioEnabled
@@ -185,7 +173,7 @@ public class SwiftEdScreenRecorderPlugin: NSObject, FlutterPlugin {
                 AVVideoCompressionPropertiesKey: [
                 AVVideoProfileLevelKey: AVVideoProfileLevelH264HighAutoLevel,
                 AVVideoAverageBitRateKey: self.videoBitrate!
-               ],
+                ] as [String : Any],
             ]
             self.videoWriterInput = AVAssetWriterInput(mediaType: AVMediaType.video, outputSettings: videoSettings);
             self.videoWriterInput?.expectsMediaDataInRealTime = true;
@@ -216,8 +204,9 @@ public class SwiftEdScreenRecorderPlugin: NSObject, FlutterPlugin {
                                 if (self.videoWriterInput?.isReadyForMoreMediaData == true) {
                                     if  self.videoWriterInput?.append(cmSampleBuffer) == false {
                                         print("Problems writing video")
-                                        res = Bool(false)
-                                        self.message="Error starting capture";
+                                        self.startRecordingResult?(FlutterError(code:"Problems writing video",message: "Problems writing video",details:"Problems writing video" ))
+                                        self.startRecordingResult=nil
+                                        
                                     }
                                 }
                             }
@@ -226,38 +215,54 @@ public class SwiftEdScreenRecorderPlugin: NSObject, FlutterPlugin {
                                     if self.audioInput?.isReadyForMoreMediaData == true {
                                         if self.audioInput?.append(cmSampleBuffer) == false {
                                             print("Problems writing audio")
-                                            print(self.videoWriter?.status ?? "")
-                                            print(self.videoWriter?.error ?? "")
+                                            self.startRecordingResult?(FlutterError(code:"Problems writing audio",message: "Problems writing audio",details:"Problems writing audio" ))
+                                            self.startRecordingResult=nil
                                         }
                                     }
                                 }
                             default:
                             break;
                     }
-                }){(error) in guard error == nil else {
-                        print("Screen record not allowed");
-                        return
+                }){(error) in if error == nil {
+                    let jsonObject: JsonObj = JsonObj(
+                      file: String("\(self.filePath)/\(self.fileName)"),
+                      isProgress: Bool(self.isProgress),
+                      eventname: String(self.eventName ?? "eventName"),
+                      message: String(self.message!),
+                      videohash: String(self.videoHash),
+                      startdate: Int(self.startDate ?? Int(NSDate().timeIntervalSince1970 * 1_000)),
+                      enddate: Int(self.endDate ?? 0)
+                    )
+                    let encoder = JSONEncoder()
+                    let json = try! encoder.encode(jsonObject)
+                    let jsonStr = String(data:json,encoding: .utf8)
+                    self.startRecordingResult?(jsonStr)
+                    self.startRecordingResult = nil
+                    return
+                } else {
+                    self.startRecordingResult?(FlutterError(code: String(error!.localizedDescription), message: error!.localizedDescription, details: error!.localizedDescription))
+                    self.startRecordingResult = nil
                     }
                 }
             }
         }
-        return  Bool(res)
     }
 
-    @objc func stopRecording() -> Bool {
-        var res : Bool = true;
+    @objc func stopRecording() -> Void {
         if(recorder.isRecording){
             if #available(iOS 11.0, *) {
                 recorder.stopCapture( handler: { (error) in
                     print("Stopping recording...");
                     if(error != nil){
-                        res = Bool(false)
                         self.message = "Has Got Error in stop record"
+                        self.stopRecordingResult?(FlutterError(code: error!.localizedDescription, message: error!.localizedDescription, details: error!.localizedDescription))
+                        self.stopRecordingResult=nil
                     }
                 })
             } else {
-                res = Bool(false)
                 self.message="You dont Support this plugin"
+                stopRecordingResult?(FlutterError(code:"You dont Support this plugin", message:"You dont Support this plugin", details:"You dont Support this plugin"))
+            stopRecordingResult = nil
             }
 
             self.videoWriterInput?.markAsFinished();
@@ -271,11 +276,26 @@ public class SwiftEdScreenRecorderPlugin: NSObject, FlutterPlugin {
                     PHAssetChangeRequest.creationRequestForAssetFromVideo(atFileURL: self.videoOutputURL!)
                 })
                 self.message="stopRecordScreenFromApp"
+                let jsonObject: JsonObj = JsonObj(
+                  file: String("\(self.filePath)/\(self.fileName)"),
+                  isProgress: Bool(self.isProgress),
+                  eventname: String(self.eventName ?? "eventName"),
+                  message: String(self.message!),
+                  videohash: String(self.videoHash),
+                  startdate: Int(self.startDate ?? Int(NSDate().timeIntervalSince1970 * 1_000)),
+                  enddate: Int(self.endDate ?? 0)
+                )
+                let encoder = JSONEncoder()
+                let json = try! encoder.encode(jsonObject)
+                let jsonStr = String(data:json,encoding: .utf8)
+                self.stopRecordingResult?(jsonStr)
+                self.stopRecordingResult=nil
             }
         }else{
             self.message="You haven't start the recording unit now!"
+            stopRecordingResult?(FlutterError(code:"You haven't start the recording unit now!", message:"You haven't start the recording unit now!", details:"You haven't start the recording unit now!"))
+            stopRecordingResult = nil
         }
-        return Bool(res);
 
 }
 }
