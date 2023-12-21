@@ -28,7 +28,8 @@ class EdScreenRecorder {
       String? fileExtension = "mp4",
       int? videoBitrate = 3000000,
       int? videoFrame = 30,
-      required bool audioEnable}) async {
+      required bool audioEnable,
+      VideoEncoder encoder = VideoEncoder.h264}) async {
     var uuid = const Uuid();
     String videoHash = uuid.v1().replaceAll('-', '');
     var dateNow = DateTime.now().microsecondsSinceEpoch;
@@ -43,6 +44,7 @@ class EdScreenRecorder {
       "fileextension": fileExtension,
       "videohash": videoHash,
       "startdate": dateNow,
+      "codec": VideoEncoder.Default,
     });
     var formatResponse = RecordOutput.fromJson(json.decode(response));
     if (kDebugMode) {
@@ -94,5 +96,33 @@ class EdScreenRecorder {
 
   Future<bool> resumeRecord() async {
     return await _channel.invokeMethod('resumeRecordScreen');
+  }
+}
+
+enum VideoEncoder {
+  // ignore: constant_identifier_names
+  Default,
+  h263,
+  h264,
+  mpeg4SP,
+  vp8,
+  hevc;
+
+  @override
+  String toString() {
+    switch (this) {
+      case VideoEncoder.Default:
+        return 'DEFAULT';
+      case VideoEncoder.h263:
+        return 'H263';
+      case VideoEncoder.h264:
+        return 'H264';
+      case VideoEncoder.mpeg4SP:
+        return 'MPEG_4_SP';
+      case VideoEncoder.vp8:
+        return 'VP8';
+      case VideoEncoder.hevc:
+        return 'HEVC';
+    }
   }
 }

@@ -60,6 +60,7 @@ PluginRegistry.ActivityResultListener, HBRecorderListener {
     String videoHash;
     long startDate;
     long endDate;
+    String codec;
 
     private void initializeResults() {
         startRecordingResult = null;
@@ -125,7 +126,8 @@ PluginRegistry.ActivityResultListener, HBRecorderListener {
                     fileExtension = call.argument("fileextension");
                     videoHash = call.argument("videohash");
                     startDate = call.argument("startdate");
-                    customSettings(videoFrame, videoBitrate, fileOutputFormat, addTimeCode, fileName);
+                    codec = call.argument("codec");
+                    customSettings(videoFrame, videoBitrate, fileOutputFormat, addTimeCode, fileName, codec);
                     if (dirPathToSave != null) {
                         System.out.println(">>>>>>>>>>> 1");
                         setOutputPath(addTimeCode, fileName, dirPathToSave);
@@ -290,13 +292,14 @@ PluginRegistry.ActivityResultListener, HBRecorderListener {
     }
 
     private void customSettings(int videoFrame, int videoBitrate, String fileOutputFormat, boolean addTimeCode,
-        String fileName) {
+        String fileName, String encoder) {
         hbRecorder.isAudioEnabled(isAudioEnabled);
         hbRecorder.setAudioSource("DEFAULT");
-        hbRecorder.setVideoEncoder("DEFAULT");
+        hbRecorder.setVideoEncoder(encoder);
         hbRecorder.setVideoFrameRate(videoFrame);
         hbRecorder.setVideoBitrate(videoBitrate);
         hbRecorder.setOutputFormat(fileOutputFormat);
+
         if (dirPathToSave == null) {
             System.out.println(">>>>>>>>>>> 2" + fileName);
             hbRecorder.setFileName(generateFileName(fileName, addTimeCode));
