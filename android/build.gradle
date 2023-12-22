@@ -21,6 +21,7 @@ rootProject.allprojects {
 }
 
 apply plugin: 'com.android.library'
+apply plugin: 'org.jetbrains.kotlin.android'
 
 android {
 
@@ -38,4 +39,5 @@ android {
 dependencies {
     implementation 'com.github.HBiSoft:HBRecorder:3.0.1'
     implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'androidx.core:core-ktx:1.12.0'
 }
