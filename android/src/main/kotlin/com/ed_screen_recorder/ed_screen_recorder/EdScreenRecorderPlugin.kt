@@ -4,7 +4,10 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.media.projection.MediaProjectionManager
+import android.os.Build
+import android.util.DisplayMetrics
 import android.util.Log
+import android.view.WindowInsets
 import com.hbisoft.hbrecorder.HBRecorder
 import com.hbisoft.hbrecorder.HBRecorderListener
 import io.flutter.embedding.engine.plugins.FlutterPlugin
@@ -22,6 +25,7 @@ import java.io.IOException
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+
 
 /** EdScreenRecorderPlugin  */
 class EdScreenRecorderPlugin : FlutterPlugin, ActivityAware, MethodCallHandler,
@@ -51,6 +55,7 @@ class EdScreenRecorderPlugin : FlutterPlugin, ActivityAware, MethodCallHandler,
     private var startDate: Long = 0
     private var endDate: Long = 0
     private var codec: String? = null
+    private var scale: Double = 1.0
     private fun initializeResults() {
         startRecordingResult = null
         stopRecordingResult = null
@@ -96,13 +101,15 @@ class EdScreenRecorderPlugin : FlutterPlugin, ActivityAware, MethodCallHandler,
                 videoHash = call.argument("videohash")
                 startDate = call.argument("startdate")!!
                 codec = call.argument("codec")
+                scale = call.argument("scale") ?: 1.0
                 customSettings(
                     videoFrame,
                     videoBitrate,
                     fileOutputFormat,
                     addTimeCode,
                     fileName,
-                    codec
+                    codec,
+                    scale
                 )
                 if (dirPathToSave != null) {
                     println(">>>>>>>>>>> 1")
@@ -261,14 +268,28 @@ class EdScreenRecorderPlugin : FlutterPlugin, ActivityAware, MethodCallHandler,
 
     private fun customSettings(
         videoFrame: Int, videoBitrate: Int, fileOutputFormat: String?, addTimeCode: Boolean,
-        fileName: String?, encoder: String?
+        fileName: String?, encoder: String?, scale: Double
     ) {
+        val width: Int?
+        val height: Int?
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val metrics = activity?.windowManager?.currentWindowMetrics
+            width = metrics?.bounds?.width()
+            height = metrics?.bounds?.height()
+        } else {
+            val view = activity?.window?.decorView
+            width = view?.width
+            height = view?.height
+        }
         hbRecorder!!.isAudioEnabled(isAudioEnabled)
         hbRecorder!!.setAudioSource("DEFAULT")
         hbRecorder!!.setVideoEncoder(encoder)
         hbRecorder!!.setVideoFrameRate(videoFrame)
         hbRecorder!!.setVideoBitrate(videoBitrate)
         hbRecorder!!.setOutputFormat(fileOutputFormat)
+        if (width != null && height != null) {
+            hbRecorder!!.setScreenDimensions((height * scale).toInt(), (width * scale).toInt())
+        }
         if (dirPathToSave == null) {
             println(">>>>>>>>>>> 2$fileName")
             hbRecorder!!.fileName = generateFileName(fileName, addTimeCode)

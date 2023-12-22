@@ -39,6 +39,7 @@ public class SwiftEdScreenRecorderPlugin: NSObject, FlutterPlugin {
   var isProgress: Bool! = false;
   var eventName: String! = "";
   var message: String? = "";
+    var scale: Double = 1.0;
 
 
   var myResult: FlutterResult?
@@ -65,34 +66,23 @@ public class SwiftEdScreenRecorderPlugin: NSObject, FlutterPlugin {
         self.fileOutputFormat=(args?["fileoutputformat"] as? String)!
         self.fileExtension=(args?["fileextension"] as? String)!
         self.videoHash=(args?["videohash"] as? String)!
+        self.scale = (args?["scale"] as? Double ?? 1.0)
         self.isProgress=Bool(true)
         self.eventName=String("startRecordScreen")
-        var width = args?["width"]; // in pixels
-        var height = args?["height"] // in pixels
+        var width: Int32; // in pixels
+        var height: Int32; // in pixels
         if UIDevice.current.orientation.isLandscape {
-            if(width == nil || width is NSNull) {
                 width = Int32(UIScreen.main.nativeBounds.height); // pixels
-            } else {
-                width = Int32(height as! Int32);
-            }
-            if(height == nil || height is NSNull) {
+           
                 height = Int32(UIScreen.main.nativeBounds.width); // pixels
-            } else {
-                height = Int32(width as! Int32);
-            }
+           
         }else{
-            if(width == nil || width is NSNull) {
                 width = Int32(UIScreen.main.nativeBounds.width); // pixels
-            } else {
-                width = Int32(width as! Int32);
-            }
-            if(height == nil || height is NSNull) {
+           
                 height = Int32(UIScreen.main.nativeBounds.height); // pixels
-            } else {
-                height = Int32(height as! Int32);
-            }
+           
         }
-        startRecording(width: width as! Int32 ,height: height as! Int32);
+        startRecording(width: Int32(Double(width) * scale) ,height: Int32(Double(height) * scale) );
         self.startDate=Int(NSDate().timeIntervalSince1970 * 1_000)
         let jsonObject: JsonObj = JsonObj(
           file: String("\(self.filePath)/\(self.fileName)"),
