@@ -44,7 +44,7 @@ class EdScreenRecorder {
       "fileextension": fileExtension,
       "videohash": videoHash,
       "startdate": dateNow,
-      "codec": VideoEncoder.Default,
+      "codec": encoder.toString(),
     });
     var formatResponse = RecordOutput.fromJson(json.decode(response));
     if (kDebugMode) {
