@@ -29,7 +29,8 @@ class EdScreenRecorder {
       int? videoBitrate = 3000000,
       int? videoFrame = 30,
       required bool audioEnable,
-      VideoEncoder encoder = VideoEncoder.h264}) async {
+      VideoEncoder encoder = VideoEncoder.h264,
+      double scale = 1.0}) async {
     var uuid = const Uuid();
     String videoHash = uuid.v1().replaceAll('-', '');
     var dateNow = DateTime.now().microsecondsSinceEpoch;
@@ -45,6 +46,7 @@ class EdScreenRecorder {
       "videohash": videoHash,
       "startdate": dateNow,
       "codec": encoder.toString(),
+      "scale": scale,
     });
     var formatResponse = RecordOutput.fromJson(json.decode(response));
     if (kDebugMode) {
